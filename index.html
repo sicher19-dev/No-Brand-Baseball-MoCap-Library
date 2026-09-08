@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>No Brand — Motion Capture Library</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111721; --panel-2:#0d131c; --line:#1e2836; --line-2:#243550;
+    --ink:#e8eef6; --ink-dim:#8a97a8; --ink-faint:#5a6675;
+    --accent:#e7b13a; --accent-2:#3fa7ff; --good:#39d98a; --warn:#ff7a59; --purple:#b48cff;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;
+    background-image:radial-gradient(1200px 500px at 82% -10%,rgba(63,167,255,.06),transparent),
+                     radial-gradient(900px 400px at -10% 110%,rgba(231,177,58,.05),transparent);}
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  /* header */
+  header{display:flex;align-items:center;gap:18px;padding:11px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0c1220,#0a0e14);flex-shrink:0}
+  .brand .mark{font-family:var(--mono);font-weight:700;letter-spacing:.14em;font-size:14px}
+  .brand .mark b{color:var(--accent)}
+  .brand .sub{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+  .spacer{flex:1}
+  label.lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-right:7px}
+  select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:7px;
+    padding:8px 10px;font-family:var(--sans);font-size:13px;outline:none}
+  select:focus{border-color:var(--accent-2)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel-2)}
+  .seg button{background:transparent;border:0;color:var(--ink-dim);padding:8px 15px;font-size:12px;letter-spacing:.05em;cursor:pointer;font-family:var(--sans)}
+  .seg button.on{background:var(--accent);color:#101010;font-weight:700}
+  .btn{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--ink-dim);border:1px solid var(--line);
+    border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  .btn:hover{color:var(--ink);border-color:var(--ink-faint)}
+  /* body */
+  .body{display:flex;flex:1;min-height:0}
+  aside{width:250px;flex-shrink:0;border-right:1px solid var(--line);background:var(--panel-2);display:flex;flex-direction:column;min-height:0}
+  .aside-head{padding:11px 13px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .roster-meta{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between}
+  #search{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:13px;outline:none}
+  #search:focus{border-color:var(--accent-2)}
+  .playerlist{overflow-y:auto;flex:1;padding:6px}
+  .pl-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+  .pl-item:hover{background:#141c28}
+  .pl-item.on{background:#15202f;border-color:var(--line-2)}
+  .pl-num{font-family:var(--mono);font-size:10px;color:var(--ink-faint);width:16px;text-align:right}
+  .pl-name{flex:1;font-size:13px}
+  .pl-hand{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:20px;border:1px solid var(--line);color:var(--ink-dim)}
+  .pl-sess{font-family:var(--mono);font-size:10px;color:var(--ink-faint)}
+  main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+  /* player header */
+  .phead{padding:14px 20px 0;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+  .phead .team-tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;padding-bottom:4px}
+  .phead h1{margin:0;font-size:23px}
+  .phead .meta{font-family:var(--mono);font-size:11px;color:var(--ink-dim);padding-bottom:4px}
+  .sess-tabs{display:flex;gap:8px;margin-left:auto;padding-bottom:2px}
+  .sess-tabs button{background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);padding:6px 13px;border-radius:7px;cursor:pointer;font-size:12px;font-family:var(--mono);letter-spacing:.03em;text-align:left;line-height:1.25}
+  .sess-tabs button b{color:var(--ink);font-family:var(--sans)}
+  .sess-tabs button.on{border-color:var(--accent);background:#1a2130}
+  .sess-tabs button.on b{color:var(--accent)}
+  /* layout grid */
+  .grid{display:grid;grid-template-columns:minmax(360px,1.15fr) minmax(360px,1fr);gap:18px;padding:16px 20px 26px}
+  @media(max-width:1050px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card h3{margin:0;padding:11px 15px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .card h3 .r{margin-left:auto;font-size:10px;color:var(--ink-faint);letter-spacing:.08em}
+  /* video */
+  .videowrap{position:relative;background:#05080d;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+  .videowrap video{width:100%;height:100%;object-fit:contain;background:#05080d}
+  .vid-missing{color:var(--ink-faint);font-family:var(--mono);font-size:12px;text-align:center;padding:20px}
+  .vcontrols{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-top:1px solid var(--line);align-items:center}
+  .vlabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:4px}
+  .chip{background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);border-radius:6px;padding:5px 9px;font-size:11.5px;cursor:pointer;font-family:var(--mono)}
+  .chip:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .chip.on{background:var(--accent-2);border-color:var(--accent-2);color:#04121f;font-weight:700}
+  .chip.fb.on{background:var(--good);border-color:var(--good);color:#03130b}
+  .pitchbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  /* metrics */
+  .metricsec{padding:8px 15px 13px}
+  .metricsec .secttl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:11px 0 7px}
+  .mrow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:6px 0;border-bottom:1px solid #131b27}
+  .mrow:last-child{border-bottom:0}
+  .mname{font-size:12.5px;color:var(--ink)}
+  .mname small{color:var(--ink-faint);font-family:var(--mono);font-size:10px}
+  .mval{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
+  .mval .sd{color:var(--ink-faint);font-size:10.5px}
+  .mbar{grid-column:1/3;height:5px;background:#0c131d;border-radius:3px;position:relative;margin-top:3px;overflow:hidden}
+  .mbar .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent-2),#7fd0ff);border-radius:3px}
+  .mbar .avg{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink-faint)}
+  .mdelta{font-family:var(--mono);font-size:10px;color:var(--ink-faint)}
+  /* kinematic sequence */
+  .seqwrap{padding:12px 15px 16px}
+  .seqrow{display:grid;grid-template-columns:64px 1fr 92px;align-items:center;gap:10px;margin:7px 0}
+  .seqlab{font-size:12px;color:var(--ink-dim)}
+  .seqtrack{height:16px;background:#0c131d;border-radius:4px;overflow:hidden;position:relative}
+  .seqfill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .seqval{font-family:var(--mono);font-size:12px;text-align:right}
+  .seqorder{margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--ink-dim);letter-spacing:.02em}
+  .seqorder b{color:var(--accent)}
+  /* notes */
+  .notes textarea{width:100%;min-height:120px;resize:vertical;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:12px 13px;font-family:var(--sans);font-size:13.5px;line-height:1.55;outline:none;margin:12px 15px;width:calc(100% - 30px)}
+  .notes textarea:focus{border-color:var(--accent-2)}
+  .saved{font-size:10px;color:var(--good);font-family:var(--mono);opacity:0;transition:opacity .3s}
+  .saved.show{opacity:1}
+  /* compare */
+  .cmpbar{display:flex;gap:18px;flex-wrap:wrap;padding:14px 20px 0}
+  .cmpside{flex:1;min-width:320px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .cmpside .tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;padding:8px 13px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center}
+  .tag.a{color:var(--accent-2)} .tag.b{color:var(--accent)}
+  .cmppick{display:flex;flex-wrap:wrap;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line)}
+  .cmppick select{font-size:12px;padding:6px 8px}
+  .cmptable{padding:14px 20px 30px}
+  .ctrow{display:grid;grid-template-columns:1.4fr 1fr 1fr 64px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #131b27}
+  .ctrow.h{border-bottom:1px solid var(--line);color:var(--ink-faint);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+  .ctname{font-size:12.5px;color:var(--ink)}
+  .ctname small{color:var(--ink-faint);font-family:var(--mono);font-size:10px;display:block}
+  .ctv{font-family:var(--mono);font-size:13px}
+  .ctv.a{color:var(--accent-2)} .ctv.b{color:var(--accent)}
+  .ctv .sd{color:var(--ink-faint);font-size:10px}
+  .ctd{font-family:var(--mono);font-size:12px;text-align:right}
+  .empty{padding:60px 20px;text-align:center;color:var(--ink-faint)}
+  .empty .big{font-family:var(--mono);letter-spacing:.1em;font-size:13px;margin-bottom:6px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#1c2735;border-radius:8px}
+  footer{flex-shrink:0;border-top:1px solid var(--line);padding:6px 20px;display:flex;gap:16px;align-items:center;font-size:10px;color:var(--ink-faint);letter-spacing:.04em;background:var(--panel-2)}
+  .legend{font-size:10px;color:var(--ink-faint);font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">NO <b>BRAND</b> BASEBALL ANALYTICS</div>
+      <div class="sub">Motion Capture Library</div>
+    </div>
+    <div class="spacer"></div>
+    <div><label class="lbl" for="teamSel">Team</label><select id="teamSel"></select></div>
+    <div class="seg" id="modeSeg">
+      <button data-mode="library" class="on">Library</button>
+      <button data-mode="compare">Compare A / B</button>
+    </div>
+    <button class="btn" id="exportBtn" title="Download a backup of all notes">Export notes</button>
+    <button class="btn" id="importBtn" title="Load a notes backup">Import</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </header>
+  <div class="body">
+    <aside id="sidebar">
+      <div class="aside-head">
+        <div class="roster-meta"><span>Roster</span><span id="rosterCount"></span></div>
+        <input type="text" id="search" placeholder="Filter pitchers…">
+      </div>
+      <div class="playerlist" id="playerList"></div>
+    </aside>
+    <main id="main"></main>
+  </div>
+  <footer>
+    <span class="legend">FP = foot plant · MER = max external rotation · REL = release</span>
+    <div class="spacer"></div>
+    <span>Notes saved in this browser · Export for a shareable backup · No Brand Baseball Analytics</span>
+  </footer>
+</div>
+<script src="data.js"></script>
+<script>
+const D = window.NB_DATA;
+const PLAYERS = D.players;
+const TEAMAVG = D.teamAvg||{};
+const SEQAVG = D.seqAvg||{};
+const SEQ = ["Pelvis","Trunk","Shoulder","Arm","Elbow","Hand"];
+const SEQMAX = 4600;
+
+// metric definitions grouped
+const METRIC_GROUPS = [
+  ["Separation & Rotation", [
+    ["hss_fs","Hip–Shoulder Sep","@ FP"],
+    ["hss_maxer","Hip–Shoulder Sep","@ MER"],
+    ["max_er","Max Shoulder ER (layback)","@ MER"],
+    ["trunk_rot_fs","Trunk Rotation","@ FP"],
+    ["pelvis_rot_fs","Pelvis Rotation","@ FP"],
+  ]],
+  ["Arm Action", [
+    ["max_ir_vel","Peak Shoulder IR Velocity",""],
+    ["elbow_fs","Elbow Flexion","@ FP"],
+    ["elbow_maxer","Elbow Flexion","@ MER"],
+    ["elbow_rel","Elbow Flexion","@ REL"],
+    ["sh_horiz_abd_fs","Shoulder Horiz Abd","@ FP"],
+    ["sh_abd_rel","Shoulder Abduction","@ REL"],
+    ["elbow_varus_nm","Elbow Varus Moment","@ MER"],
+  ]],
+  ["Lower Half & Trunk", [
+    ["stride_pct_bh","Stride Length","% BH"],
+    ["lead_knee_fs","Lead Knee Flexion","@ FP"],
+    ["lead_knee_rel","Lead Knee Flexion","@ REL"],
+    ["trunk_fwd_rel","Trunk Forward Tilt","@ REL"],
+    ["trunk_lat_rel","Trunk Lateral Tilt","@ REL"],
+  ]],
+];
+const ALL_METRICS = METRIC_GROUPS.flatMap(g=>g[1]);
+
+// ---- state
+let state = {mode:"library", pi:0, si:0, pitch:0, angle:1};
+let cmp = {a:{pi:0,si:0,pitch:0,angle:1}, b:{pi:1,si:0,pitch:0,angle:1}};
+
+// ---- notes
+const NKEY="nobrand_mocap_notes_v2";
+function loadNotes(){try{return JSON.parse(localStorage.getItem(NKEY))||{};}catch(e){return{};}}
+function saveNotes(n){try{localStorage.setItem(NKEY,JSON.stringify(n));return true;}catch(e){return false;}}
+let NOTES=loadNotes();
+
+// ---- elements
+const teamSel=document.getElementById("teamSel");
+const playerList=document.getElementById("playerList");
+const rosterCount=document.getElementById("rosterCount");
+const search=document.getElementById("search");
+const main=document.getElementById("main");
+const modeSeg=document.getElementById("modeSeg");
+teamSel.innerHTML='<option>'+D.team+'</option>';
+
+function vsrc(session, pitchNum, angle){
+  return "videos/"+session.reportId+"/"+session.videoPrefix+"-"+pitchNum+"-"+angle+".mp4";
+}
+function anglesOf(p){ return (p.angleList&&p.angleList.length)?p.angleList:Array.from({length:p.angles||8},(_,i)=>i+1); }
+function fmt(m){ if(!m||m.v===null||m.v===undefined) return "—"; return (Math.round(m.v*10)/10); }
+
+// ---------- roster ----------
+function renderRoster(){
+  const q=(search.value||"").trim().toLowerCase();
+  const shown=PLAYERS.map((p,i)=>[p,i]).filter(([p])=>p.name.toLowerCase().includes(q));
+  rosterCount.textContent=shown.length+" / "+PLAYERS.length;
+  playerList.innerHTML="";
+  shown.forEach(([p,i])=>{
+    const d=document.createElement("div");
+    d.className="pl-item"+(state.pi===i?" on":"");
+    d.innerHTML='<span class="pl-num">'+String(i+1).padStart(2,"0")+'</span>'+
+      '<span class="pl-name">'+p.name+'</span>'+
+      '<span class="pl-hand">'+p.hand+'HP</span>'+
+      '<span class="pl-sess">'+p.sessionCount+'×</span>';
+    d.onclick=()=>{state.pi=i;state.si=0;state.pitch=0;render();};
+    playerList.appendChild(d);
+  });
+}
+
+// ---------- metric card ----------
+function metricRow(key,label,at,H){
+  const m=H[key]; const avg=TEAMAVG[key];
+  const v=(m&&m.v!=null)?m.v:null;
+  let bar="";
+  if(v!=null && avg){
+    const scale=Math.max(Math.abs(avg)*2, Math.abs(v)*1.15, 1);
+    const pct=Math.max(2,Math.min(100, Math.abs(v)/scale*100));
+    const apct=Math.max(0,Math.min(100, Math.abs(avg)/scale*100));
+    bar='<div class="mbar"><div class="fill" style="width:'+pct+'%"></div><div class="avg" style="left:'+apct+'%"></div></div>';
+  }
+  const unit=(m&&m.u)?m.u:"";
+  const sd=(m&&m.sd!=null)?'<span class="sd"> ±'+m.sd+'</span>':"";
+  let delta="";
+  if(v!=null&&avg!=null){const dv=Math.round((v-avg)*10)/10; delta='<span class="mdelta">'+(dv>=0?"+":"")+dv+' vs team</span>';}
+  return '<div class="mrow"><div class="mname">'+label+' <small>'+at+'</small></div>'+
+    '<div class="mval">'+fmt(m)+(unit?('<span class="sd"> '+unit+'</span>'):'')+sd+'</div>'+
+    (delta?'<div class="mname"></div><div class="mval">'+delta+'</div>':'')+
+    bar+'</div>';
+}
+function metricCard(H){
+  let h='<div class="card"><h3>Report Card <span class="r">mean ± SD · bar vs team avg (tick)</span></h3><div class="metricsec">';
+  METRIC_GROUPS.forEach(([title,rows])=>{
+    h+='<div class="secttl">'+title+'</div>';
+    rows.forEach(([k,l,at])=>h+=metricRow(k,l,at,H));
+  });
+  h+='</div></div>';
+  return h;
+}
+// ---------- kinematic sequence ----------
+function seqColors(){return {Pelvis:"#3fa7ff",Trunk:"#39d98a",Shoulder:"#e7b13a",Arm:"#ff7a59",Elbow:"#b48cff",Hand:"#ff5ea8"};}
+function seqCard(session){
+  const peak=session.seqPeak, time=session.seqTime, col=seqColors();
+  let rows="";
+  SEQ.forEach(s=>{
+    const v=peak[s]||0; const pct=Math.max(2,Math.min(100,v/SEQMAX*100));
+    rows+='<div class="seqrow"><div class="seqlab">'+s+'</div>'+
+      '<div class="seqtrack"><div class="seqfill" style="width:'+pct+'%;background:'+col[s]+'"></div></div>'+
+      '<div class="seqval">'+v+'<span class="sd" style="color:var(--ink-faint)"> °/s</span></div></div>';
+  });
+  const order=SEQ.slice().filter(s=>time[s]!=null).sort((a,b)=>time[a]-time[b]);
+  const orderStr=order.map(s=>'<b>'+s[0]+'</b>').join(" → ");
+  const proper=["Pelvis","Trunk","Shoulder","Arm","Elbow","Hand"];
+  const ok=order.slice(0,4).join(",")===proper.slice(0,4).join(",");
+  return '<div class="card"><h3>Kinematic Sequence <span class="r">peak angular velocity</span></h3><div class="seqwrap">'+rows+
+    '<div class="seqorder">Order (by peak timing): '+orderStr+' &nbsp; '+
+    (ok?'<span style="color:var(--good)">proximal → distal ✓</span>':'<span style="color:var(--warn)">check sequence</span>')+'</div></div></div>';
+}
+// ---------- video card ----------
+function videoCard(session,pitchIdx,angle,onPitch,onAngle){
+  const pitches=session.pitches;
+  const p=pitches[Math.min(pitchIdx,pitches.length-1)];
+  let pbtns="";
+  pitches.forEach((pt,i)=>{
+    const isFb=/^FB|SI/.test(pt.type);
+    pbtns+='<button class="chip'+(i===pitchIdx?(isFb?" fb on":" on"):"")+'" data-p="'+i+'">#'+pt.num+' '+(pt.type||"?")+'</button>';
+  });
+  const angs=anglesOf(p); const dispAngle=angs.includes(angle)?angle:angs[0];
+  let abtns="";
+  angs.forEach(a=>{abtns+='<button class="chip'+(a===dispAngle?" on":"")+'" data-a="'+a+'">'+a+'</button>';});
+  const src=vsrc(session,p.num,dispAngle);
+  return '<div class="card">'+
+    '<h3>Pitch Video <span class="r">'+p.type+' · pitch #'+p.num+' · view '+dispAngle+' ('+angs.length+' cams)</span></h3>'+
+    '<div class="pitchbar">'+pbtns+'</div>'+
+    '<div class="videowrap"><video src="'+src+'" controls autoplay muted loop playsinline></video></div>'+
+    '<div class="vcontrols"><span class="vlabel">Camera</span>'+abtns+'</div>'+
+    '</div>';
+}
+
+// ---------- library view ----------
+function renderLibrary(){
+  const p=PLAYERS[state.pi];
+  const s=p.sessions[Math.min(state.si,p.sessions.length-1)];
+  let tabs="";
+  p.sessions.forEach((se,i)=>{tabs+='<button class="'+(i===state.si?"on":"")+'" data-s="'+i+'"><b>S'+se.sessionNo+'</b><br>'+se.date+'</button>';});
+  const nkey=p.name;
+  const noteVal=(NOTES[nkey]||"").replace(/</g,"&lt;");
+  main.innerHTML=
+    '<div class="phead"><span class="team-tag">'+D.team+'</span><h1>'+p.name+'</h1>'+
+      '<span class="meta">'+p.hand+'HP · #'+(p.jersey||"—")+' · '+p.sessionCount+' session'+(p.sessionCount>1?"s":"")+'</span>'+
+      '<div class="sess-tabs">'+tabs+'</div></div>'+
+    '<div class="grid">'+
+      '<div>'+videoCard(s,state.pitch,state.angle)+'</div>'+
+      '<div>'+metricCard(s.headline)+seqCard(s)+
+        '<div class="card notes"><h3>Reconciliation Notes — '+p.name+' <span class="saved" id="savedTag">saved ✓</span></h3>'+
+        '<textarea id="noteArea" placeholder="Running notes across '+p.name+"'s sessions — mechanical changes, cues, what to check next visit, how sessions reconcile…\">"+noteVal+'</textarea></div>'+
+      '</div>'+
+    '</div>';
+  // wire
+  main.querySelectorAll(".sess-tabs button").forEach(b=>b.onclick=()=>{state.si=+b.dataset.s;state.pitch=0;renderLibrary();});
+  wireVideo(main, ()=>state, {
+    pitch:(i)=>{state.pitch=i;renderLibrary();},
+    angle:(a)=>{state.angle=a;refreshVideoOnly(main,s,state.pitch,a);}
+  });
+  const area=document.getElementById("noteArea"),tag=document.getElementById("savedTag");let t=null;
+  area.addEventListener("input",()=>{NOTES[nkey]=area.value;clearTimeout(t);t=setTimeout(()=>{if(saveNotes(NOTES)){tag.classList.add("show");setTimeout(()=>tag.classList.remove("show"),1200);}},300);});
+}
+function wireVideo(root,getState,cb){
+  root.querySelectorAll('.pitchbar .chip').forEach(b=>b.onclick=()=>cb.pitch(+b.dataset.p));
+  root.querySelectorAll('.vcontrols .chip').forEach(b=>b.onclick=()=>cb.angle(+b.dataset.a));
+}
+function refreshVideoOnly(root,session,pitchIdx,angle){
+  // re-render just the video card container for snappy angle switch
+  renderLibrary();
+}
+
+// ---------- compare view ----------
+function playerOpts(sel){return PLAYERS.map((p,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>'+p.name+' ('+p.hand+'HP)</option>').join("");}
+function sessOpts(pi,sel){return PLAYERS[pi].sessions.map((s,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>S'+s.sessionNo+' · '+s.date+'</option>').join("");}
+function cmpSide(side){
+  const st=cmp[side]; const p=PLAYERS[st.pi]; const s=p.sessions[Math.min(st.si,p.sessions.length-1)];
+  const pt=s.pitches[Math.min(st.pitch,s.pitches.length-1)];
+  let pbtns=""; s.pitches.forEach((x,i)=>{const fb=/^FB|SI/.test(x.type);pbtns+='<button class="chip'+(i===st.pitch?(fb?" fb on":" on"):"")+'" data-p="'+i+'">#'+x.num+' '+x.type+'</button>';});
+  const angs=anglesOf(pt); const da=angs.includes(st.angle)?st.angle:angs[0];
+  let abtns=""; angs.forEach(a=>{abtns+='<button class="chip'+(a===da?" on":"")+'" data-a="'+a+'">'+a+'</button>';});
+  return '<div class="cmpside" data-side="'+side+'">'+
+    '<div class="tag '+side+'">'+side.toUpperCase()+' · '+p.name+'</div>'+
+    '<div class="cmppick"><select class="c-player">'+playerOpts(st.pi)+'</select><select class="c-sess">'+sessOpts(st.pi,st.si)+'</select></div>'+
+    '<div class="pitchbar">'+pbtns+'</div>'+
+    '<div class="videowrap"><video src="'+vsrc(s,pt.num,da)+'" controls autoplay muted loop playsinline></video></div>'+
+    '<div class="vcontrols"><span class="vlabel">Camera</span>'+abtns+'</div></div>';
+}
+function cmpTable(){
+  const A=cmp.a,B=cmp.b;
+  const sa=PLAYERS[A.pi].sessions[Math.min(A.si,PLAYERS[A.pi].sessions.length-1)];
+  const sb=PLAYERS[B.pi].sessions[Math.min(B.si,PLAYERS[B.pi].sessions.length-1)];
+  const na=PLAYERS[A.pi].name+" S"+sa.sessionNo, nb=PLAYERS[B.pi].name+" S"+sb.sessionNo;
+  let rows='<div class="ctrow h"><div>Metric</div><div class="ctv a">'+na+'</div><div class="ctv b">'+nb+'</div><div class="ctd">Δ</div></div>';
+  // sequence peaks
+  rows+='<div class="ctrow h" style="border-top:0"><div>Kinematic sequence peak (°/s)</div><div></div><div></div><div></div></div>';
+  SEQ.forEach(k=>{
+    const va=sa.seqPeak[k], vb=sb.seqPeak[k]; const d=(va!=null&&vb!=null)?vb-va:null;
+    rows+='<div class="ctrow"><div class="ctname">'+k+'</div><div class="ctv a">'+(va??"—")+'</div><div class="ctv b">'+(vb??"—")+'</div><div class="ctd" style="color:'+dcol(d)+'">'+dstr(d)+'</div></div>';
+  });
+  rows+='<div class="ctrow h"><div>Positions & separation</div><div></div><div></div><div></div></div>';
+  ALL_METRICS.forEach(([k,l,at])=>{
+    const ma=sa.headline[k], mb=sb.headline[k];
+    const va=ma&&ma.v!=null?ma.v:null, vb=mb&&mb.v!=null?mb.v:null;
+    const d=(va!=null&&vb!=null)?Math.round((vb-va)*10)/10:null;
+    const u=(ma&&ma.u)||(mb&&mb.u)||"";
+    rows+='<div class="ctrow"><div class="ctname">'+l+' <small>'+at+'</small></div>'+
+      '<div class="ctv a">'+(va!=null?va:"—")+(ma&&ma.sd!=null?'<span class="sd"> ±'+ma.sd+'</span>':"")+'</div>'+
+      '<div class="ctv b">'+(vb!=null?vb:"—")+(mb&&mb.sd!=null?'<span class="sd"> ±'+mb.sd+'</span>':"")+'</div>'+
+      '<div class="ctd" style="color:'+dcol(d)+'">'+dstr(d)+(d!=null&&u?'':'')+'</div></div>';
+  });
+  return '<div class="cmptable"><div class="card" style="padding:14px 16px 6px">'+rows+'</div></div>';
+}
+function dstr(d){if(d==null)return "—";return (d>=0?"+":"")+d;}
+function dcol(d){if(d==null)return "var(--ink-faint)";if(Math.abs(d)<0.001)return "var(--ink-faint)";return d>0?"var(--good)":"var(--warn)";}
+function renderCompare(){
+  const cnkey="__cmp__";
+  const cnote=(NOTES[cnkey]||"").replace(/</g,"&lt;");
+  main.innerHTML='<div class="cmpbar">'+cmpSide("a")+cmpSide("b")+'</div>'+cmpTable()+
+    '<div style="padding:0 20px 30px"><div class="card notes"><h3>Comparison Notes <span class="saved" id="csave">saved ✓</span></h3>'+
+    '<textarea id="cnote" placeholder="What this A/B comparison shows — differences to act on, reconciliation between the two…">'+cnote+'</textarea></div></div>';
+  main.querySelectorAll('.cmpside').forEach(col=>{
+    const side=col.dataset.side, st=cmp[side];
+    col.querySelector('.c-player').onchange=e=>{st.pi=+e.target.value;st.si=0;st.pitch=0;renderCompare();};
+    col.querySelector('.c-sess').onchange=e=>{st.si=+e.target.value;st.pitch=0;renderCompare();};
+    col.querySelectorAll('.pitchbar .chip').forEach(b=>b.onclick=()=>{st.pitch=+b.dataset.p;renderCompare();});
+    col.querySelectorAll('.vcontrols .chip').forEach(b=>b.onclick=()=>{st.angle=+b.dataset.a;renderCompare();});
+  });
+  const ta=document.getElementById("cnote"),tag=document.getElementById("csave");let t=null;
+  ta.addEventListener("input",()=>{NOTES[cnkey]=ta.value;clearTimeout(t);t=setTimeout(()=>{if(saveNotes(NOTES)){tag.classList.add("show");setTimeout(()=>tag.classList.remove("show"),1200);}},300);});
+}
+
+// ---------- master ----------
+function render(){
+  renderRoster();
+  document.getElementById("sidebar").style.display = state.mode==="library"?"flex":"none";
+  if(state.mode==="library") renderLibrary(); else renderCompare();
+}
+modeSeg.querySelectorAll("button").forEach(b=>b.onclick=()=>{modeSeg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.mode=b.dataset.mode;render();});
+search.oninput=renderRoster;
+document.getElementById("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(NOTES,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="nobrand_mocap_notes_"+new Date().toISOString().slice(0,10)+".json";a.click();};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{NOTES=Object.assign(NOTES,JSON.parse(r.result));saveNotes(NOTES);render();}catch(err){alert("Could not read that notes file.");}};r.readAsText(f);};
+render();
+</script>
+</body>
+</html>
