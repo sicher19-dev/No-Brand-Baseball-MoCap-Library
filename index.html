@@ -166,7 +166,11 @@
 <script>
 const D = window.NB_DATA;
 const PLAYERS = D.players;
-const TEAMAVG = D.teamAvg||{};
+const TEAMS = (D.teams && D.teams.length) ? D.teams : [D.team];
+// teamAvg may be per-team ({team:{metric:avg}}) or legacy flat ({metric:avg})
+const TEAMAVG_ALL = D.teamAvg||{};
+const isPerTeam = TEAMS.some(t=>TEAMAVG_ALL[t]!==undefined);
+function avgFor(team){ return isPerTeam ? (TEAMAVG_ALL[team]||{}) : TEAMAVG_ALL; }
 const SEQAVG = D.seqAvg||{};
 const SEQ = ["Pelvis","Trunk","Shoulder","Arm","Elbow","Hand"];
 const SEQMAX = 4600;
@@ -200,7 +204,9 @@ const METRIC_GROUPS = [
 const ALL_METRICS = METRIC_GROUPS.flatMap(g=>g[1]);
 
 // ---- state
-let state = {mode:"library", pi:0, si:0, pitch:0, angle:1};
+let state = {mode:"library", team:TEAMS[0], pi:0, si:0, pitch:0, angle:1};
+function firstPlayerOf(team){ const i=PLAYERS.findIndex(p=>(p.team||TEAMS[0])===team); return i<0?0:i; }
+state.pi = firstPlayerOf(state.team);
 let cmp = {a:{pi:0,si:0,pitch:0,angle:1}, b:{pi:1,si:0,pitch:0,angle:1}};
 
 // ---- notes
@@ -216,7 +222,9 @@ const rosterCount=document.getElementById("rosterCount");
 const search=document.getElementById("search");
 const main=document.getElementById("main");
 const modeSeg=document.getElementById("modeSeg");
-teamSel.innerHTML='<option>'+D.team+'</option>';
+teamSel.innerHTML=TEAMS.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+teamSel.value=state.team;
+teamSel.onchange=e=>{state.team=e.target.value;state.pi=firstPlayerOf(state.team);state.si=0;state.pitch=0;render();};
 
 function vsrc(session, pitchNum, angle){
   return "videos/"+session.reportId+"/"+session.videoPrefix+"-"+pitchNum+"-"+angle+".mp4";
@@ -227,8 +235,9 @@ function fmt(m){ if(!m||m.v===null||m.v===undefined) return "—"; return (Math.
 // ---------- roster ----------
 function renderRoster(){
   const q=(search.value||"").trim().toLowerCase();
-  const shown=PLAYERS.map((p,i)=>[p,i]).filter(([p])=>p.name.toLowerCase().includes(q));
-  rosterCount.textContent=shown.length+" / "+PLAYERS.length;
+  const inTeam=PLAYERS.map((p,i)=>[p,i]).filter(([p])=>(p.team||TEAMS[0])===state.team);
+  const shown=inTeam.filter(([p])=>p.name.toLowerCase().includes(q));
+  rosterCount.textContent=shown.length+" / "+inTeam.length;
   playerList.innerHTML="";
   shown.forEach(([p,i])=>{
     const d=document.createElement("div");
@@ -243,8 +252,8 @@ function renderRoster(){
 }
 
 // ---------- metric card ----------
-function metricRow(key,label,at,H){
-  const m=H[key]; const avg=TEAMAVG[key];
+function metricRow(key,label,at,H,AVG){
+  const m=H[key]; const avg=(AVG||{})[key];
   const v=(m&&m.v!=null)?m.v:null;
   let bar="";
   if(v!=null && avg){
@@ -262,11 +271,11 @@ function metricRow(key,label,at,H){
     (delta?'<div class="mname"></div><div class="mval">'+delta+'</div>':'')+
     bar+'</div>';
 }
-function metricCard(H){
-  let h='<div class="card"><h3>Report Card <span class="r">mean ± SD · bar vs team avg (tick)</span></h3><div class="metricsec">';
+function metricCard(H,AVG,teamName){
+  let h='<div class="card"><h3>Report Card <span class="r">mean ± SD · bar vs '+(teamName||'team')+' avg (tick)</span></h3><div class="metricsec">';
   METRIC_GROUPS.forEach(([title,rows])=>{
     h+='<div class="secttl">'+title+'</div>';
-    rows.forEach(([k,l,at])=>h+=metricRow(k,l,at,H));
+    rows.forEach(([k,l,at])=>h+=metricRow(k,l,at,H,AVG));
   });
   h+='</div></div>';
   return h;
@@ -315,17 +324,18 @@ function videoCard(session,pitchIdx,angle,onPitch,onAngle){
 function renderLibrary(){
   const p=PLAYERS[state.pi];
   const s=p.sessions[Math.min(state.si,p.sessions.length-1)];
+  const pteam=p.team||TEAMS[0];
   let tabs="";
-  p.sessions.forEach((se,i)=>{tabs+='<button class="'+(i===state.si?"on":"")+'" data-s="'+i+'"><b>S'+se.sessionNo+'</b><br>'+se.date+'</button>';});
+  p.sessions.forEach((se,i)=>{tabs+='<button class="'+(i===state.si?"on":"")+'" data-s="'+i+'"><b>S'+se.sessionNo+'</b><br>'+se.date+(se.label?'<br><span style="color:var(--accent);font-size:10px">'+se.label+'</span>':'')+'</button>';});
   const nkey=p.name;
   const noteVal=(NOTES[nkey]||"").replace(/</g,"&lt;");
   main.innerHTML=
-    '<div class="phead"><span class="team-tag">'+D.team+'</span><h1>'+p.name+'</h1>'+
+    '<div class="phead"><span class="team-tag">'+pteam+'</span><h1>'+p.name+'</h1>'+
       '<span class="meta">'+p.hand+'HP · #'+(p.jersey||"—")+' · '+p.sessionCount+' session'+(p.sessionCount>1?"s":"")+'</span>'+
       '<div class="sess-tabs">'+tabs+'</div></div>'+
     '<div class="grid">'+
       '<div>'+videoCard(s,state.pitch,state.angle)+'</div>'+
-      '<div>'+metricCard(s.headline)+seqCard(s)+
+      '<div>'+metricCard(s.headline,avgFor(pteam),pteam)+seqCard(s)+
         '<div class="card notes"><h3>Reconciliation Notes — '+p.name+' <span class="saved" id="savedTag">saved ✓</span></h3>'+
         '<textarea id="noteArea" placeholder="Running notes across '+p.name+"'s sessions — mechanical changes, cues, what to check next visit, how sessions reconcile…\">"+noteVal+'</textarea></div>'+
       '</div>'+
@@ -349,8 +359,8 @@ function refreshVideoOnly(root,session,pitchIdx,angle){
 }
 
 // ---------- compare view ----------
-function playerOpts(sel){return PLAYERS.map((p,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>'+p.name+' ('+p.hand+'HP)</option>').join("");}
-function sessOpts(pi,sel){return PLAYERS[pi].sessions.map((s,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>S'+s.sessionNo+' · '+s.date+'</option>').join("");}
+function playerOpts(sel){return PLAYERS.map((p,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>'+p.name+' · '+(p.team||TEAMS[0])+' ('+p.hand+'HP)</option>').join("");}
+function sessOpts(pi,sel){return PLAYERS[pi].sessions.map((s,i)=>'<option value="'+i+'" '+(i===sel?"selected":"")+'>S'+s.sessionNo+' · '+s.date+(s.label?' · '+s.label:'')+'</option>').join("");}
 function cmpSide(side){
   const st=cmp[side]; const p=PLAYERS[st.pi]; const s=p.sessions[Math.min(st.si,p.sessions.length-1)];
   const pt=s.pitches[Math.min(st.pitch,s.pitches.length-1)];
